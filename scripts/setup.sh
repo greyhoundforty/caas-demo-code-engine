@@ -49,6 +49,7 @@ job_args=(
   --retrylimit 2
   --maxexecutiontime 120
   --env "INGEST_URL=${ingest_url}"
+  --env "COS_ENDPOINT=https://s3.direct.${REGION}.cloud-object-storage.appdomain.cloud"
   --env-from-secret "$SECRET"
 )
 if exists ibmcloud ce job get --name "$JOB"; then

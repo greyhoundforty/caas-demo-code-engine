@@ -45,7 +45,8 @@ def create_app(store: EventStore, ingest_token: str, webhook_secret: str) -> Sta
 
     async def ingest(request: Request):
         sent = request.headers.get("authorization", "")
-        if not hmac.compare_digest(sent, f"Bearer {ingest_token}"):
+        # Compare bytes: compare_digest raises TypeError on non-ASCII str input.
+        if not hmac.compare_digest(sent.encode(), f"Bearer {ingest_token}".encode()):
             return JSONResponse({"error": "unauthorized"}, status_code=401)
         event = await _json_object(request)
         if event is None:

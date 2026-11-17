@@ -42,6 +42,10 @@ def test_verify_signature_rejects_missing_or_malformed_header(header):
     assert verify_signature(SECRET, BODY, header) is False
 
 
+def test_verify_signature_rejects_non_ascii_header_without_raising():
+    assert verify_signature(SECRET, BODY, "sha256=caf\xe9") is False
+
+
 def test_verify_signature_rejects_empty_secret():
     assert verify_signature("", BODY, sign("", BODY)) is False
 

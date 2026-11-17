@@ -67,6 +67,23 @@ def test_ingest_requires_token(client, store, headers):
     assert store.recent() == []
 
 
+def test_ingest_non_ascii_authorization_is_401_not_500(client, store):
+    headers = {"Authorization": "Bearer caf\xe9".encode("latin-1")}
+    resp = client.post("/api/events", json=BUILD, headers=headers)
+    assert resp.status_code == 401
+    assert store.recent() == []
+
+
+def test_webhook_non_ascii_signature_is_401_not_500(client, store):
+    body = b"{}"
+    headers = {
+        "X-Hub-Signature-256": b"sha256=caf\xe9",
+        "X-GitHub-Event": "push",
+    }
+    assert webhook_status(client, body, headers) == 401
+    assert store.recent() == []
+
+
 def test_ingest_accepts_valid_event(client, store):
     resp = client.post("/api/events", json=BUILD, headers=AUTH)
     assert resp.status_code == 201

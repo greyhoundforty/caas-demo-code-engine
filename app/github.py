@@ -11,7 +11,8 @@ def verify_signature(secret: str, body: bytes, header: str | None) -> bool:
     if not secret or not header or not header.startswith(SIGNATURE_PREFIX):
         return False
     expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(SIGNATURE_PREFIX + expected, header)
+    # Compare bytes: compare_digest raises TypeError on non-ASCII str input.
+    return hmac.compare_digest((SIGNATURE_PREFIX + expected).encode(), header.encode())
 
 
 def push_event(payload: dict) -> dict:
