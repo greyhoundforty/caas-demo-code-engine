@@ -14,7 +14,10 @@ echo "ok: app is up at ${url}"
 
 ready=0
 for _ in $(seq 1 30); do
-  if ibmcloud ce subscription cos get --name "$SUB" | grep -Eq '^Ready:[[:space:]]+true'; then
+  # Capture first: with pipefail, grep -q exiting early can SIGPIPE the CLI and
+  # turn a match into a pipeline failure.
+  status="$(ibmcloud ce subscription cos get --name "$SUB" 2>/dev/null || true)"
+  if grep -Eq '^Ready:[[:space:]]+true' <<<"$status"; then
     ready=1
     break
   fi
