@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Create or update everything the demo needs in the Code Engine project.
-# Requires: RESOURCE_GROUP CE_PROJECT COS_INSTANCE BUCKET REGION
+# Requires: RESOURCE_GROUP CE_PROJECT COS_INSTANCE BUCKET REGION IMAGE_PREFIX
+# (images must already be pushed and publicly pullable: see scripts/build-push.sh;
+# optional IMAGE_TAG, default latest).
 # Set SHOW_SECRETS=1 to print the generated webhook secret (first run only).
 source "$(dirname "$0")/lib.sh"
+require_env IMAGE_PREFIX
 ce_context
+tag="${IMAGE_TAG:-latest}"
 
 created_secret=0
 if exists ibmcloud ce secret get --name "$SECRET"; then
@@ -20,9 +24,7 @@ fi
 
 app_args=(
   --name "$APP"
-  --build-source "$ROOT"
-  --build-strategy dockerfile
-  --build-dockerfile app/Dockerfile
+  --image "${IMAGE_PREFIX}-app:${tag}"
   --port 8080
   --min-scale 1
   --max-scale 1
@@ -41,9 +43,7 @@ fi
 ingest_url="$(app_local_url)/api/events"
 job_args=(
   --name "$JOB"
-  --build-source "$ROOT"
-  --build-strategy dockerfile
-  --build-dockerfile job/Dockerfile
+  --image "${IMAGE_PREFIX}-job:${tag}"
   --cpu 0.25
   --memory 0.5G
   --retrylimit 2
