@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build event feed</title>
+<style>
+  :root {
+    --paper: #fbfaf6; --ink: #22283a; --muted: #6b7280;
+    --blue: #0f62fe; --green: #24a148; --red: #da1e28; --orange: #ff832b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 3rem; background: var(--paper); color: var(--ink);
+    font: 22px/1.35 Inter, system-ui, sans-serif;
+  }
+  header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+  h1 { margin: 0; font-size: 2rem; font-weight: 600; }
+  #status { width: 14px; height: 14px; border-radius: 50%; background: var(--orange); }
+  #status.live { background: var(--green); }
+  #label { color: var(--muted); font-size: 1rem; }
+  #empty { color: var(--muted); font-size: 1.2rem; }
+  #feed { display: grid; gap: 1rem; max-width: 60rem; }
+  .card {
+    border-left: 10px solid var(--blue); background: #fff; padding: 0.9rem 1.2rem;
+    border-radius: 6px; box-shadow: 0 1px 4px rgba(34, 40, 58, 0.12);
+    animation: in 0.35s ease-out;
+  }
+  .card.passed { border-color: var(--green); }
+  .card.failed { border-color: var(--red); }
+  .card.rejected { border-color: var(--orange); }
+  .badge { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; color: var(--muted); }
+  .title { font-size: 1.35rem; font-weight: 600; }
+  .meta { color: var(--muted); font-size: 0.95rem; font-family: "JetBrains Mono", monospace; }
+  @keyframes in { from { opacity: 0; transform: translateY(-12px); } }
+  @media (prefers-reduced-motion: reduce) { .card { animation: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Build event feed</h1>
+  <span id="status" aria-hidden="true"></span>
+  <span id="label" role="status">connecting…</span>
+</header>
+<p id="empty">Waiting for events. Push to GitHub or drop a JSON file in the bucket.</p>
+<main id="feed"></main>
+<script>
+const MAX_CARDS = 30;
+const feed = document.getElementById("feed");
+const empty = document.getElementById("empty");
+const dot = document.getElementById("status");
+const label = document.getElementById("label");
+
+function line(cls, text) {
+  const el = document.createElement("div");
+  el.className = cls;
+  el.textContent = text;
+  return el;
+}
+
+function describe(e) {
+  if (e.kind === "push") {
+    return { cls: "push", badge: "PUSH",
+      title: `${e.repo} · ${e.branch}`,
+      meta: `${e.author || "unknown"} · ${e.commit || "no commit"} · ${e.message || ""}` };
+  }
+  if (e.kind === "build") {
+    return { cls: e.status, badge: `BUILD ${String(e.status).toUpperCase()}`,
+      title: e.summary,
+      meta: `${e.pass_rate}% pass · ${e.branch} · ${e.builder} · ${e.key}` };
+  }
+  if (e.kind === "rejected") {
+    return { cls: "rejected", badge: "REJECTED",
+      title: e.key || "unknown object", meta: e.reason || "" };
+  }
+  return { cls: "", badge: String(e.kind || "EVENT").toUpperCase(), title: "", meta: "" };
+}
+
+const seen = new Set();
+
+function render(e) {
+  // The server replays its buffer on every (re)connect; show each event once.
+  if (e.id && seen.has(e.id)) return;
+  if (e.id) seen.add(e.id);
+  const d = describe(e);
+  const card = document.createElement("article");
+  card.className = `card ${d.cls}`;
+  card.append(line("badge", d.badge), line("title", d.title), line("meta", d.meta));
+  empty.hidden = true;
+  feed.prepend(card);
+  while (feed.children.length > MAX_CARDS) feed.lastChild.remove();
+}
+
+const source = new EventSource("/events");
+source.onopen = () => { dot.classList.add("live"); label.textContent = "live"; };
+source.onerror = () => { dot.classList.remove("live"); label.textContent = "reconnecting…"; };
+source.onmessage = (m) => {
+  try { render(JSON.parse(m.data)); } catch (err) { console.error("bad event", err); }
+};
+</script>
+</body>
+</html>
