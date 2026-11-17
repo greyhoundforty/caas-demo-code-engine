@@ -12,8 +12,16 @@ if [[ "$(curl -s -o /dev/null -w '%{http_code}' "${url}/healthz")" != "200" ]]; 
 fi
 echo "ok: app is up at ${url}"
 
-if ! ibmcloud ce subscription cos get --name "$SUB" | grep -Eq '^Ready:[[:space:]]+true'; then
-  echo "FAIL: subscription ${SUB} is not Ready" >&2
+ready=0
+for _ in $(seq 1 30); do
+  if ibmcloud ce subscription cos get --name "$SUB" | grep -Eq '^Ready:[[:space:]]+true'; then
+    ready=1
+    break
+  fi
+  sleep 2
+done
+if [[ "$ready" -ne 1 ]]; then
+  echo "FAIL: subscription ${SUB} is not Ready after 60s" >&2
   exit 1
 fi
 echo "ok: subscription ${SUB} is Ready"

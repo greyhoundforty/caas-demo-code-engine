@@ -6,6 +6,8 @@ APP=build-feed
 JOB=build-processor
 SUB=incoming-json
 SECRET=demo-secrets
+COS_SECRET=cos-reader
+COS_KEY=caas-demo-job-reader
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 

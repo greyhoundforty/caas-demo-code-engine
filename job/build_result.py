@@ -20,7 +20,9 @@ def decode(raw: bytes) -> object:
     try:
         return json.loads(text)
     except json.JSONDecodeError as exc:
-        raise Rejected(f"invalid JSON: {exc.msg}") from exc
+        raise Rejected(
+            f"invalid JSON: {exc.msg} (line {exc.lineno}, column {exc.colno})"
+        ) from exc
 
 
 def _is_count(value: object) -> bool:

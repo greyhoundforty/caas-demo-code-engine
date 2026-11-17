@@ -59,11 +59,30 @@ else
   ibmcloud ce job create "${job_args[@]}"
 fi
 
-if ibmcloud ce job get --name "$JOB" | grep -q "$COS_INSTANCE"; then
-  echo "job ${JOB}: COS binding exists"
+# COS access for the job: a Reader-only service credential scoped to the demo
+# instance, stored in a Code Engine secret (COS_APIKEY, COS_RESOURCE_INSTANCE_ID).
+# (A Code Engine service binding would do this, but needs permission to create a
+# binding service ID.) The key never touches the terminal.
+if exists ibmcloud ce secret get --name "$COS_SECRET"; then
+  echo "secret ${COS_SECRET}: exists, reusing"
 else
-  ibmcloud ce job bind --name "$JOB" --service-instance "$COS_INSTANCE"
+  envfile="$(mktemp)"
+  trap 'rm -f "$envfile"' EXIT
+  if ! exists ibmcloud resource service-key "$COS_KEY"; then
+    ibmcloud resource service-key-create "$COS_KEY" Reader \
+      --instance-name "$COS_INSTANCE" >/dev/null
+  fi
+  ibmcloud resource service-key "$COS_KEY" --output JSON |
+    python3 -c '
+import json, sys
+creds = json.load(sys.stdin)[0]["credentials"]
+print("COS_APIKEY=" + creds["apikey"])
+print("COS_RESOURCE_INSTANCE_ID=" + creds["resource_instance_id"])
+' >"$envfile"
+  ibmcloud ce secret create --name "$COS_SECRET" --from-env-file "$envfile" >/dev/null
+  echo "secret ${COS_SECRET}: created"
 fi
+ibmcloud ce job update --name "$JOB" --env-from-secret "$COS_SECRET" >/dev/null
 
 if exists ibmcloud ce subscription cos get --name "$SUB"; then
   echo "subscription ${SUB}: exists"

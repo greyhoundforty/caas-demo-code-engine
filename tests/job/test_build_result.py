@@ -46,6 +46,11 @@ def test_decode_rejects_empty_and_binary(raw):
         decode(raw)
 
 
+def test_decode_reports_line_and_column_of_the_error():
+    with pytest.raises(Rejected, match=r"invalid JSON: .*\(line 2, column 7\)"):
+        decode(b'{\n  "a" 1}')
+
+
 def test_decode_returns_parsed_json():
     assert decode(b'{"a": 1}') == {"a": 1}
 
