@@ -1,0 +1,9 @@
+{
+  "repo": "caas-demo",
+  "branch": "main",
+  "commit": "__COMMIT__",
+  "status": "passed",
+  "duration_s": 74,
+  "tests": {"passed": 128, "failed": 0},
+  "builder": "tekton"
+}

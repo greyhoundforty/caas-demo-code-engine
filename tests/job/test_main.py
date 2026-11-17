@@ -7,6 +7,7 @@ from job.build_result import Rejected
 from job.main import (
     DEFAULT_COS_ENDPOINT,
     build_event,
+    cos_credentials,
     fetch_object,
     main,
     make_cos,
@@ -176,6 +177,31 @@ def test_main_returns_1_on_500():
     client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(500)))
     cos = FakeCos(json.dumps(GOOD).encode())
     assert main(env(), cos=cos, client=client) == 1
+
+
+def test_cos_credentials_from_service_binding():
+    services = {
+        "cloud-object-storage": [
+            {
+                "name": "caas-demo-cos",
+                "credentials": {"apikey": "bound-key", "resource_instance_id": "crn:b"},
+            }
+        ]
+    }
+    env = {"CE_SERVICES": json.dumps(services)}
+    assert cos_credentials(env) == ("bound-key", "crn:b")
+
+
+def test_cos_credentials_fall_back_to_plain_env():
+    env = {"COS_APIKEY": "k", "COS_RESOURCE_INSTANCE_ID": "crn:x"}
+    assert cos_credentials(env) == ("k", "crn:x")
+
+
+def test_cos_credentials_missing_raises():
+    with pytest.raises(RuntimeError, match="COS credentials"):
+        cos_credentials({})
+    with pytest.raises(RuntimeError, match="COS credentials"):
+        cos_credentials({"CE_SERVICES": '{"messagehub": []}'})
 
 
 def test_make_cos_uses_direct_endpoint_by_default():

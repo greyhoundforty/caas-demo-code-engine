@@ -23,12 +23,29 @@ def parse_ce_data(env: Mapping[str, str]) -> tuple[str, str, str, str]:
     return env["CE_ID"], data["operation"], data["bucket"], data["key"]
 
 
+def cos_credentials(env: Mapping[str, str]) -> tuple[str, str]:
+    """Return (apikey, resource_instance_id) from the service binding or plain env.
+
+    A Code Engine service binding exposes credentials as JSON in CE_SERVICES; the
+    explicit COS_APIKEY / COS_RESOURCE_INSTANCE_ID variables are the fallback.
+    """
+    if "CE_SERVICES" in env:
+        for entry in json.loads(env["CE_SERVICES"]).get("cloud-object-storage", []):
+            creds = entry.get("credentials", {})
+            if "apikey" in creds and "resource_instance_id" in creds:
+                return creds["apikey"], creds["resource_instance_id"]
+    if "COS_APIKEY" in env and "COS_RESOURCE_INSTANCE_ID" in env:
+        return env["COS_APIKEY"], env["COS_RESOURCE_INSTANCE_ID"]
+    raise RuntimeError("no COS credentials in CE_SERVICES or COS_* environment")
+
+
 def make_cos(env: Mapping[str, str]):
     """Build a COS client from the service-binding variables."""
+    apikey, instance_id = cos_credentials(env)
     return ibm_boto3.client(
         "s3",
-        ibm_api_key_id=env["COS_APIKEY"],
-        ibm_service_instance_id=env["COS_RESOURCE_INSTANCE_ID"],
+        ibm_api_key_id=apikey,
+        ibm_service_instance_id=instance_id,
         ibm_auth_endpoint=IAM_ENDPOINT,
         config=Config(signature_version="oauth"),
         endpoint_url=env.get("COS_ENDPOINT", DEFAULT_COS_ENDPOINT),

@@ -1,0 +1,9 @@
+{
+  "repo": "caas-demo",
+  "branch": "feature/slow-query",
+  "commit": "__COMMIT__",
+  "status": "failed",
+  "duration_s": 131,
+  "tests": {"passed": 125, "failed": 3},
+  "builder": "tekton"
+}
